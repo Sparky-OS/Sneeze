@@ -379,6 +379,37 @@ each scene's root-anchored bounding sphere is fitted to `TARGET_EXTENT` = 5.0
 render units). `MOUSE_SENSITIVITY` is `0.0025` and `SCROLL_FACTOR` is `1.075`
 (both halved from earlier values to make orbit/zoom less jumpy).
 
+## Stereo
+
+Off by default. `Stereo(const STEREO&)` (any thread, declared in
+`include/Viewport.h`) asks for two views of the scene in every frame:
+`dInterpupillaryDistance` metres between two cameras and `dZeroParallaxDistance` metres from the camera to
+the zero-parallax plane. It returns false and changes nothing for a value that
+is not positive and finite while enabling.
+
+The compositor builds the pair in `Stereo_Eyes` from the camera it would have
+used for one view. Both cameras keep that camera's direction and up (parallel
+axes, never toed in) and sit half the interpupillary distance either side of it along
+direction x up, in render units (metres times the scene's render scale). Each
+sets ANARI's `imageRegion` on its perspective camera to the whole image shifted
+by `+-delta` of its width, `delta = (b / 2) / (2 dZeroParallaxDistance tan(fovy / 2) aspect)`,
+so the plane shows the same rectangle in both views and a point on it lands on
+the same column; no part of either view is cropped or left empty. The
+device must honour `imageRegion` (Halogen does from the release that lists
+`ANARI_KHR_CAMERA_PERSPECTIVE`).
+
+`RENDERER::SetCameraStereo(Left, Right)` takes the pair; `RENDERER::ANARI` renders
+the frame twice (left, then right, same world) and `GetFrameWidth()` is then
+twice `GetWidth()`: the frame handed to `IVIEWPORT::OnFrameReady` is the left
+view and the right view side by side, left first, each `Resize` wide, so one
+buffer carries both eyes. `GetWidth()` stays the width of one view and gives the
+camera's aspect. Without stereo no call, parameter or buffer changes.
+
+`SetCameraStereo` returns false, logs one error saying why, and one view is drawn,
+when the native surface is in use (one swapchain image) or when the ANARI device
+does not list `ANARI_KHR_CAMERA_PERSPECTIVE` (no `imageRegion`: its two views would
+be identical).
+
 ## INPUT
 
 POD struct accumulating raw input state per viewport: mouse deltas, scroll,

@@ -267,6 +267,10 @@ public:
    std::mutex              m_mxCamera;
    CAMERA                  m_Camera;
    bool                    m_bCamera_Active = false;
+
+   // Stereo views (set from any thread; read by the compositor each frame)
+   mutable std::mutex      m_mxStereo;
+   STEREO                  m_Stereo;
 };
 
 
@@ -364,6 +368,30 @@ void VIEWPORT::Camera_Deactivate ()
    std::lock_guard<std::mutex> guard (m_pImpl->m_mxCamera);
 
    m_pImpl->m_bCamera_Active = false;
+}
+
+bool VIEWPORT::Stereo (const STEREO& Stereo)
+{
+   bool bOk = true;
+
+   if (Stereo.bEnable)
+      bOk = std::isfinite (Stereo.dInterpupillaryDistance)  &&  Stereo.dInterpupillaryDistance > 0.0  &&  std::isfinite (Stereo.dZeroParallaxDistance)  &&  Stereo.dZeroParallaxDistance > 0.0;
+
+   if (bOk)
+   {
+      std::lock_guard<std::mutex> guard (m_pImpl->m_mxStereo);
+
+      m_pImpl->m_Stereo = Stereo;
+   }
+
+   return bOk;
+}
+
+VIEWPORT::STEREO VIEWPORT::Stereo () const
+{
+   std::lock_guard<std::mutex> guard (m_pImpl->m_mxStereo);
+
+   return m_pImpl->m_Stereo;
 }
 
 void VIEWPORT::Scene_Invalidate ()

@@ -142,6 +142,35 @@ namespace SNEEZE
       bool   Camera_Active     (CAMERA& Camera) const;
       void   Camera_Deactivate ();
 
+      // --- Stereo ---
+      //
+      // Two views of the scene instead of one, for a host that shows a stereo
+      // pair. Off by default: nothing changes and the frame is one picture.
+      //
+      // On, the compositor renders the scene twice per frame from two cameras
+      // that share the camera's direction and up vector, dInterpupillaryDistance metres
+      // apart along its right vector (parallel axes, never toed in), each with
+      // the off-axis frustum that makes the plane dZeroParallaxDistance metres in front of the
+      // camera the zero-parallax plane (ANARI's imageRegion on the perspective
+      // camera). The frame the host receives is one picture, the left view
+      // first and the right view next to it, each at the size set by Resize:
+      // 2 * width by height.
+      //
+      // Stereo needs the readback path (FrameWindow returns nullptr): the
+      // native surface has one swapchain image and no second view yet.
+
+      struct STEREO
+      {
+         bool   bEnable     = false;
+         double dInterpupillaryDistance = 0.0635;   // metres between the two cameras
+         double dZeroParallaxDistance = 0.0;   // metres from the camera to the zero-parallax plane
+      };
+
+      // Returns false, and leaves stereo as it was, when a value is not usable
+      // (a non-positive or non-finite interpupillary distance or zero-parallax distance while enabling).
+      bool   Stereo (const STEREO& Stereo);
+      STEREO Stereo () const;
+
       // --- Renderer ---
 
       RENDERER* Renderer () const;
